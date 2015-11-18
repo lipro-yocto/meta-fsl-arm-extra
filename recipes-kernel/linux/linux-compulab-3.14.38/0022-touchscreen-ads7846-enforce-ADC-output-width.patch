@@ -1,0 +1,44 @@
+From c9e206672116da9d27575763258832e53348c778 Mon Sep 17 00:00:00 2001
+From: Valentin Raevsky <valentin@compulab.co.il>
+Date: Sun, 3 Jan 2016 11:30:54 +0200
+Subject: [PATCH 22/30] touchscreen: ads7846: enforce ADC output width
+
+Enforce ADC output is 12 bits width.
+For no clear reason, on i.MX6-based CM-FX6, we have experienced a
+13-th bit.
+
+Signed-off-by: Andrey Gelman <andrey.gelman@compulab.co.il>
+---
+ drivers/input/touchscreen/ads7846.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/input/touchscreen/ads7846.c b/drivers/input/touchscreen/ads7846.c
+index 8186429..8ba0748 100644
+--- a/drivers/input/touchscreen/ads7846.c
++++ b/drivers/input/touchscreen/ads7846.c
+@@ -668,18 +668,20 @@ static int ads7846_no_filter(void *ads, int data_idx, int *val)
+ 
+ static int ads7846_get_value(struct ads7846 *ts, struct spi_message *m)
+ {
++	int value;
+ 	struct spi_transfer *t =
+ 		list_entry(m->transfers.prev, struct spi_transfer, transfer_list);
+ 
+ 	if (ts->model == 7845) {
+-		return be16_to_cpup((__be16 *)&(((char*)t->rx_buf)[1])) >> 3;
++		value = be16_to_cpup((__be16 *)&(((char*)t->rx_buf)[1])) >> 3;
+ 	} else {
+ 		/*
+ 		 * adjust:  on-wire is a must-ignore bit, a BE12 value, then
+ 		 * padding; built from two 8 bit values written msb-first.
+ 		 */
+-		return (be16_to_cpup((__be16 *)t->rx_buf) & 0x7ff8) >> 3;
++		value = (be16_to_cpup((__be16 *)t->rx_buf) & 0x7ff8) >> 3;
+ 	}
++	return value & 0xfff;
+ }
+ 
+ static void ads7846_update_value(struct spi_message *m, int val)
+-- 
+1.9.1
+
